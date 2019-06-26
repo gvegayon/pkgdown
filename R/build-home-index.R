@@ -120,12 +120,24 @@ repo_link <- memoise(function(pkg) {
 
   cran_url <- paste0("https://cloud.r-project.org/package=", pkg)
 
-  if (!httr::http_error(cran_url)) {
+  # Checking whether CRAN can be fetched or not
+  cran_url_test <- tryCatch(httr::http_error(cran_url), error = function(e) e)
+  if (inherits(cran_url_test, "error")) {
+    return(NULL)
+  }
+
+  if (!cran_url_test) {
     return(list(repo = "CRAN", url = cran_url))
   }
 
-  # bioconductor always returns a 200 status, redirecting to /removed-packages/
+  # Checking whether BioC can be fetched or not
   bioc_url <- paste0("https://www.bioconductor.org/packages/", pkg)
+  bioc_url_test <- tryCatch(httr::http_error(bioc_url), error = function(e) e)
+  if (inherits(bioc_url_test, "error")) {
+    return(NULL)
+  }
+
+  # bioconductor always returns a 200 status, redirecting to /removed-packages/
   req <- httr::HEAD(bioc_url)
   if (!httr::http_error(req) && !grepl("removed-packages", req$url)) {
     return(list(repo = "BIOC", url = bioc_url))
